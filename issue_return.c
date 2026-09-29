@@ -1,189 +1,252 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "issue_return.h"
-#include "student.h"
-#include "book.h"   /* Member 1's module: needs get_book_by_id(),
-                       set_book_availability(), increment_borrow_count() */
+#include "library.h"
 
-#define MAX_TRANSACTIONS 100
+#define maxlog 100
+#define loan 14
 
-static Transaction transactions[MAX_TRANSACTIONS];
-static int transactionCount = 0;
+typedef struct
+{
+    int sid;
+    int bid;
+    int iday;
+    int rday;
+    int done;
+} trans;
 
-static Queue waitQueue = { NULL, NULL };
+typedef struct wait
+{
+    int sid;
+    int bid;
+    struct wait *next;
+} wait;
+
+static trans logs[maxlog];
+static int nlog = 0;
+
+static wait *rear = NULL;
+
+static int ask(char *msg)
+{
+    int x;
+
+    printf("%s", msg);
+    scanf("%d", &x);
+
+    return x;
+}
+
+static void wait_add(int sid, int bid)
+{
+    wait *n = malloc(sizeof(wait));
+
+    if (n == NULL)
+    {
+        printf("no memory\n");
+        return;
+    }
+
+    n->sid = sid;
+    n->bid = bid;
+
+    if (rear == NULL)
+        n->next = n;
+    else
+    {
+        n->next = rear->next;
+        rear->next = n;
+    }
+
+    rear = n;
+
+    printf("added to queue\n");
+}
+
+static void wait_go(int bid)
+{
+    wait *prev;
+    wait *cur;
+
+    if (rear == NULL)
+        return;
+
+    prev = rear;
+    cur = rear->next;
+
+    do
+    {
+        if (cur->bid == bid)
+        {
+            printf("tell student %d: book %d is free\n", cur->sid, bid);
+
+            if (cur == prev)
+                rear = NULL;
+            else
+            {
+                prev->next = cur->next;
+
+                if (cur == rear)
+                    rear = prev;
+            }
+
+            free(cur);
+            return;
+        }
+
+        prev = cur;
+        cur = cur->next;
+    } while (prev != rear);
+}
 
 void issue_book(void)
 {
-    int student_id, book_id, day;
-    Book *book;
-    StudentNode *student;
+    int sid, bid, day;
+    book *b;
 
-    printf("\nEnter Student ID: ");
-    scanf("%d", &student_id);
+    sid = ask("\nstudent id: ");
 
-    student = search_student_by_id(student_id);
-    if (student == NULL)
+    if (find_stu(sid) == NULL)
     {
-        printf("Student not found.\n");
+        printf("no such student\n");
         return;
     }
 
-    printf("Enter Book ID: ");
-    scanf("%d", &book_id);
+    bid = ask("book id: ");
 
-    book = get_book_by_id(book_id);
-    if (book == NULL)
+    b = find_book(bid);
+
+    if (b == NULL)
     {
-        printf("Book not found.\n");
+        printf("no such book\n");
         return;
     }
 
-    if (!book->is_available)
+    if (!b->avail)
     {
-        printf("Book is currently issued. Adding you to the waiting queue.\n");
-        enqueue_waiting(student_id, book_id);
+        printf("book is out\n");
+        wait_add(sid, bid);
         return;
     }
 
-    printf("Enter issue day (e.g. day number of the term): ");
-    scanf("%d", &day);
-
-    if (transactionCount >= MAX_TRANSACTIONS)
+    if (nlog >= maxlog)
     {
-        printf("Transaction log is full.\n");
+        printf("log full\n");
         return;
     }
 
-    transactions[transactionCount].student_id = student_id;
-    transactions[transactionCount].book_id = book_id;
-    transactions[transactionCount].issue_day = day;
-    transactions[transactionCount].return_day = -1;
-    transactions[transactionCount].returned = 0;
-    transactionCount++;
+    day = ask("issue day: ");
 
-    set_book_availability(book_id, 0);
-    increment_borrow_count(book_id);
-    change_borrowed_count(student_id, 1);
+    logs[nlog].sid = sid;
+    logs[nlog].bid = bid;
+    logs[nlog].iday = day;
+    logs[nlog].rday = -1;
+    logs[nlog].done = 0;
+    nlog++;
 
-    printf("Book issued successfully.\n");
+    b->avail = 0;
+    b->count++;
+    hist_add(sid, bid);
+
+    printf("book issued, due in %d days\n", loan);
 }
 
 void return_book(void)
 {
-    int student_id, book_id, day;
-    int i, found = -1;
+    int sid, bid, day, late;
+    int at = -1;
+    int i;
+    book *b;
 
-    printf("\nEnter Student ID: ");
-    scanf("%d", &student_id);
+    sid = ask("\nstudent id: ");
+    bid = ask("book id: ");
 
-    printf("Enter Book ID: ");
-    scanf("%d", &book_id);
-
-    for (i = 0; i < transactionCount; i++)
+    for (i = 0; i < nlog && at == -1; i++)
     {
-        if (transactions[i].student_id == student_id &&
-            transactions[i].book_id == book_id &&
-            transactions[i].returned == 0)
-        {
-            found = i;
-            break;
-        }
+        if (logs[i].sid == sid && logs[i].bid == bid && !logs[i].done)
+            at = i;
     }
 
-    if (found == -1)
+    if (at == -1)
     {
-        printf("No matching active transaction found.\n");
+        printf("no such issue\n");
         return;
     }
 
-    printf("Enter return day: ");
-    scanf("%d", &day);
+    day = ask("return day: ");
 
-    transactions[found].return_day = day;
-    transactions[found].returned = 1;
+    logs[at].rday = day;
+    logs[at].done = 1;
 
-    set_book_availability(book_id, 1);
-    change_borrowed_count(student_id, -1);
+    b = find_book(bid);
 
-    printf("Book returned successfully.\n");
+    if (b != NULL)
+        b->avail = 1;
 
-    /* hand the book straight to the next student waiting, if any */
-    process_queue_for_book(book_id);
+    hist_back(sid, bid);
+
+    printf("book returned\n");
+
+    late = day - logs[at].iday - loan;
+
+    if (late > 0)
+        printf("late by %d days, fine rs %.2f\n", late, calc_fine(late));
+
+    wait_go(bid);
 }
 
-void enqueue_waiting(int student_id, int book_id)
+void show_queue(void)
 {
-    QueueNode *node = (QueueNode *)malloc(sizeof(QueueNode));
+    wait *t;
+    int n = 0;
 
-    if (node == NULL)
+    if (rear == NULL)
     {
-        printf("Memory allocation failed.\n");
+        printf("\nqueue empty\n");
         return;
     }
 
-    node->student_id = student_id;
-    node->book_id = book_id;
-    node->next = NULL;
+    printf("\n--- queue ---\n");
 
-    if (waitQueue.rear == NULL)
-    {
-        waitQueue.front = node;
-        waitQueue.rear = node;
-    }
-    else
-    {
-        waitQueue.rear->next = node;
-        waitQueue.rear = node;
-    }
+    t = rear->next;
 
-    printf("Added to waiting queue.\n");
+    do
+    {
+        n++;
+        printf("%d. student %d wants book %d\n", n, t->sid, t->bid);
+        t = t->next;
+    } while (t != rear->next);
 }
 
-void process_queue_for_book(int book_id)
+void logs_save(const char *path)
 {
-    QueueNode *temp = waitQueue.front;
-    QueueNode *prev = NULL;
+    FILE *f = fopen(path, "w");
+    int i;
 
-    while (temp != NULL)
+    if (f == NULL)
     {
-        if (temp->book_id == book_id)
-        {
-            printf("Notify Student ID %d: Book %d is now available.\n",
-                   temp->student_id, temp->book_id);
-
-            if (prev == NULL)
-                waitQueue.front = temp->next;
-            else
-                prev->next = temp->next;
-
-            if (temp == waitQueue.rear)
-                waitQueue.rear = prev;
-
-            free(temp);
-            return; /* only the first matching student in line gets notified */
-        }
-
-        prev = temp;
-        temp = temp->next;
-    }
-}
-
-void display_queue(void)
-{
-    QueueNode *temp = waitQueue.front;
-
-    if (temp == NULL)
-    {
-        printf("\nWaiting queue is empty.\n");
+        printf("cannot write %s\n", path);
         return;
     }
 
-    printf("\n===== WAITING QUEUE =====\n");
+    for (i = 0; i < nlog; i++)
+        fprintf(f, "%d|%d|%d|%d|%d\n", logs[i].sid, logs[i].bid, logs[i].iday, logs[i].rday, logs[i].done);
 
-    while (temp != NULL)
-    {
-        printf("Student ID %d waiting for Book ID %d\n",
-               temp->student_id, temp->book_id);
-        temp = temp->next;
-    }
+    fclose(f);
+}
+
+void logs_load(const char *path)
+{
+    FILE *f = fopen(path, "r");
+
+    if (f == NULL)
+        return;
+
+    nlog = 0;
+
+    while (nlog < maxlog &&
+           fscanf(f, " %d|%d|%d|%d|%d", &logs[nlog].sid, &logs[nlog].bid,
+                  &logs[nlog].iday, &logs[nlog].rday, &logs[nlog].done) == 5)
+        nlog++;
+
+    fclose(f);
 }

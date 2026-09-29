@@ -1,156 +1,311 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "student.h"
+#include "library.h"
 
-StudentNode *studentHead = NULL;
-static StudentNode *studentTail = NULL;
+static stu *shead = NULL;
 
-StudentNode *search_student_by_id(int student_id)
+static void read_text(char *dest, int size)
 {
-    StudentNode *temp = studentHead;
+    int c = getchar();
+    int i = 0;
 
-    while (temp != NULL)
+    while (c == '\n' || c == ' ')
+        c = getchar();
+
+    while (c != '\n' && c != EOF && i < size - 1)
     {
-        if (temp->data.student_id == student_id)
-            return temp;
-
-        temp = temp->next;
+        dest[i] = c;
+        i++;
+        c = getchar();
     }
 
-    return NULL;
+    dest[i] = '\0';
 }
 
-void add_student(void)
+static void free_hist(hnode *h)
 {
-    StudentNode *newNode = (StudentNode *)malloc(sizeof(StudentNode));
+    hnode *nx;
 
-    if (newNode == NULL)
+    while (h != NULL)
     {
-        printf("Memory allocation failed.\n");
-        return;
-    }
-
-    printf("\nEnter Student ID: ");
-    scanf("%d", &newNode->data.student_id);
-
-    if (search_student_by_id(newNode->data.student_id) != NULL)
-    {
-        printf("Student ID already exists.\n");
-        free(newNode);
-        return;
-    }
-
-    getchar();
-
-    printf("Enter Student Name: ");
-    fgets(newNode->data.name, sizeof(newNode->data.name), stdin);
-    newNode->data.name[strcspn(newNode->data.name, "\n")] = '\0';
-
-    newNode->data.borrowed_count = 0;
-    newNode->next = NULL;
-
-    if (studentHead == NULL)
-    {
-        studentHead = newNode;
-        studentTail = newNode;
-    }
-    else
-    {
-        studentTail->next = newNode;
-        studentTail = newNode;
-    }
-
-    printf("Student added successfully.\n");
-}
-
-void display_students(void)
-{
-    StudentNode *temp = studentHead;
-
-    if (studentHead == NULL)
-    {
-        printf("\nNo students registered.\n");
-        return;
-    }
-
-    printf("\n========== STUDENT LIST ==========\n");
-
-    while (temp != NULL)
-    {
-        printf("\nStudent ID     : %d", temp->data.student_id);
-        printf("\nName           : %s", temp->data.name);
-        printf("\nBorrowed Count : %d\n", temp->data.borrowed_count);
-        printf("-----------------------------------\n");
-
-        temp = temp->next;
+        nx = h->next;
+        free(h);
+        h = nx;
     }
 }
 
-void update_student(void)
+stu *find_stu(int id)
 {
+    stu *t = shead;
+
+    while (t != NULL && t->id != id)
+        t = t->next;
+
+    return t;
+}
+
+void add_stu(void)
+{
+    stu *n;
     int id;
-    StudentNode *node;
 
-    printf("\nEnter Student ID to update: ");
+    printf("\nstudent id: ");
     scanf("%d", &id);
 
-    node = search_student_by_id(id);
-
-    if (node == NULL)
+    if (find_stu(id) != NULL)
     {
-        printf("Student not found.\n");
+        printf("id already used\n");
         return;
     }
 
-    getchar();
+    n = malloc(sizeof(stu));
 
-    printf("Enter new name: ");
-    fgets(node->data.name, sizeof(node->data.name), stdin);
-    node->data.name[strcspn(node->data.name, "\n")] = '\0';
+    if (n == NULL)
+    {
+        printf("no memory\n");
+        return;
+    }
 
-    printf("Student updated successfully.\n");
+    n->id = id;
+
+    printf("name: ");
+    read_text(n->name, sizeof(n->name));
+
+    n->count = 0;
+    n->hist = NULL;
+    n->next = shead;
+    shead = n;
+
+    printf("student added\n");
 }
 
-void delete_student(void)
+void show_stu(void)
+{
+    stu *t;
+
+    if (shead == NULL)
+    {
+        printf("\nno students\n");
+        return;
+    }
+
+    printf("\n--- students (newest first) ---\n");
+
+    for (t = shead; t != NULL; t = t->next)
+    {
+        printf("\nid    : %d", t->id);
+        printf("\nname  : %s", t->name);
+        printf("\nbooks : %d\n", t->count);
+    }
+}
+
+void edit_stu(void)
 {
     int id;
-    StudentNode *temp = studentHead;
-    StudentNode *prev = NULL;
+    stu *s;
 
-    printf("\nEnter Student ID to delete: ");
+    printf("\nstudent id to edit: ");
     scanf("%d", &id);
 
-    while (temp != NULL && temp->data.student_id != id)
-    {
-        prev = temp;
-        temp = temp->next;
-    }
+    s = find_stu(id);
 
-    if (temp == NULL)
+    if (s == NULL)
     {
-        printf("Student not found.\n");
+        printf("not found\n");
         return;
     }
 
-    if (prev == NULL)
-        studentHead = temp->next;
-    else
-        prev->next = temp->next;
+    printf("new name: ");
+    read_text(s->name, sizeof(s->name));
 
-    if (temp == studentTail)
-        studentTail = prev;
-
-    free(temp);
-
-    printf("Student deleted successfully.\n");
+    printf("student updated\n");
 }
 
-/* delta is +1 when a book is issued, -1 when returned */
-void change_borrowed_count(int student_id, int delta)
+void del_stu(void)
 {
-    StudentNode *node = search_student_by_id(student_id);
+    int id;
+    stu **pp = &shead;
+    stu *gone;
 
-    if (node != NULL)
-        node->data.borrowed_count += delta;
+    printf("\nstudent id to delete: ");
+    scanf("%d", &id);
+
+    while (*pp != NULL && (*pp)->id != id)
+        pp = &(*pp)->next;
+
+    if (*pp == NULL)
+    {
+        printf("not found\n");
+        return;
+    }
+
+    gone = *pp;
+    *pp = gone->next;
+
+    free_hist(gone->hist);
+    free(gone);
+
+    printf("student deleted\n");
+}
+
+void hist_add(int sid, int bid)
+{
+    stu *s = find_stu(sid);
+    hnode *h;
+
+    if (s == NULL)
+        return;
+
+    h = malloc(sizeof(hnode));
+
+    if (h == NULL)
+        return;
+
+    h->bid = bid;
+    h->back = 0;
+    h->next = s->hist;
+    s->hist = h;
+    s->count++;
+}
+
+void hist_back(int sid, int bid)
+{
+    stu *s = find_stu(sid);
+    hnode *h;
+
+    if (s == NULL)
+        return;
+
+    for (h = s->hist; h != NULL; h = h->next)
+    {
+        if (h->bid == bid && !h->back)
+        {
+            h->back = 1;
+            s->count--;
+            return;
+        }
+    }
+}
+
+void show_mine(void)
+{
+    int id;
+    stu *s;
+    hnode *h;
+    book *b;
+
+    printf("\nstudent id: ");
+    scanf("%d", &id);
+
+    s = find_stu(id);
+
+    if (s == NULL)
+    {
+        printf("not found\n");
+        return;
+    }
+
+    if (s->hist == NULL)
+    {
+        printf("no books yet\n");
+        return;
+    }
+
+    printf("\n--- books of %s ---\n", s->name);
+
+    for (h = s->hist; h != NULL; h = h->next)
+    {
+        b = find_book(h->bid);
+        printf("book %d | %s | %s\n", h->bid, b ? b->title : "(deleted)", h->back ? "returned" : "with student");
+    }
+}
+
+int count_stu(void)
+{
+    stu *t;
+    int n = 0;
+
+    for (t = shead; t != NULL; t = t->next)
+        n++;
+
+    return n;
+}
+
+int count_busy(void)
+{
+    stu *t;
+    int n = 0;
+
+    for (t = shead; t != NULL; t = t->next)
+    {
+        if (t->count > 0)
+            n++;
+    }
+
+    return n;
+}
+
+stu *first_stu(void)
+{
+    return shead;
+}
+
+void load_stu(int id, const char *name)
+{
+    stu *n = malloc(sizeof(stu));
+    stu *t;
+
+    if (n == NULL)
+        return;
+
+    n->id = id;
+    strncpy(n->name, name, sizeof(n->name) - 1);
+    n->name[sizeof(n->name) - 1] = '\0';
+    n->count = 0;
+    n->hist = NULL;
+    n->next = NULL;
+
+    if (shead == NULL)
+    {
+        shead = n;
+        return;
+    }
+
+    for (t = shead; t->next != NULL; t = t->next)
+        ;
+
+    t->next = n;
+}
+
+void load_hist(int sid, int bid, int back)
+{
+    stu *s = find_stu(sid);
+    hnode *h;
+    hnode *t;
+
+    if (s == NULL)
+        return;
+
+    h = malloc(sizeof(hnode));
+
+    if (h == NULL)
+        return;
+
+    h->bid = bid;
+    h->back = back;
+    h->next = NULL;
+
+    if (s->hist == NULL)
+        s->hist = h;
+    else
+    {
+        for (t = s->hist; t->next != NULL; t = t->next)
+            ;
+
+        t->next = h;
+    }
+
+    if (!back)
+        s->count++;
 }
