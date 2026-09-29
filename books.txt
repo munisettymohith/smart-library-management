@@ -1,0 +1,12 @@
+103|Algorithms Unlocked|Thomas Cormen|Algorithms|1|1
+112|Artificial Intelligence|Stuart Russell|AI|1|0
+101|C Programming|Dennis Ritchie|Programming|1|3
+105|Computer Networks|Andrew Tanenbaum|Networking|1|1
+102|Data Structures in C|Reema Thareja|Programming|0|1
+104|Database Systems|Ramez Elmasri|Database|0|1
+109|Digital Logic Design|Morris Mano|Electronics|1|0
+108|Discrete Mathematics|Kenneth Rosen|Mathematics|1|0
+107|Introduction to Algorithms|Thomas Cormen|Algorithms|0|1
+111|Let Us C|Yashavant Kanetkar|Programming|1|0
+106|Operating System Concepts|Abraham Silberschatz|Systems|1|1
+110|Software Engineering|Ian Sommerville|Software|1|0
