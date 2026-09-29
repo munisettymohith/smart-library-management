@@ -1,313 +1,223 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "library.h"
 
-typedef struct Book
+book *head = NULL;
+static book *tail = NULL;
+
+book *find_book(int id)
 {
-    int bookId;
-    char title[100];
-    char author[100];
-    char category[50];
-    int available;
-    int borrowCount;
-    struct Book *next;
-} Book;
+    book *t = head;
 
-Book *head = NULL;
-Book *tail = NULL;
-
-/* Find a book using its ID */
-Book *getBookById(int id)
-{
-    Book *temp = head;
-
-    while (temp != NULL)
+    while (t != NULL)
     {
-        if (temp->bookId == id)
-            return temp;
+        if (t->id == id)
+            return t;
 
-        temp = temp->next;
+        t = t->next;
     }
 
     return NULL;
 }
 
-/* Add a new book */
-void addBook()
+void put_book(book *b)
 {
-    Book *newBook;
-
-    newBook = (Book *)malloc(sizeof(Book));
-
-    if (newBook == NULL)
-    {
-        printf("Memory allocation failed.\n");
-        return;
-    }
-
-    printf("\nEnter Book ID: ");
-    scanf("%d", &newBook->bookId);
-
-    if (getBookById(newBook->bookId) != NULL)
-    {
-        printf("Book ID already exists.\n");
-        free(newBook);
-        return;
-    }
-
-    getchar();
-
-    printf("Enter Book Title: ");
-    fgets(newBook->title, sizeof(newBook->title), stdin);
-    newBook->title[strcspn(newBook->title, "\n")] = '\0';
-
-    printf("Enter Author: ");
-    fgets(newBook->author, sizeof(newBook->author), stdin);
-    newBook->author[strcspn(newBook->author, "\n")] = '\0';
-
-    printf("Enter Category: ");
-    fgets(newBook->category, sizeof(newBook->category), stdin);
-    newBook->category[strcspn(newBook->category, "\n")] = '\0';
-
-    newBook->available = 1;
-    newBook->borrowCount = 0;
-    newBook->next = NULL;
+    b->next = NULL;
 
     if (head == NULL)
-    {
-        head = newBook;
-        tail = newBook;
-    }
+        head = b;
     else
-    {
-        tail->next = newBook;
-        tail = newBook;
-    }
+        tail->next = b;
 
-    printf("Book added successfully.\n");
+    tail = b;
 }
 
-/* Display all books */
-void displayBooks()
+static void show_one(book *b)
 {
-    Book *temp = head;
+    printf("\nid     : %d", b->id);
+    printf("\ntitle  : %s", b->title);
+    printf("\nauthor : %s", b->author);
+    printf("\ncat    : %s", b->cat);
+    printf("\nstatus : %s", b->avail ? "in" : "out");
+    printf("\ncount  : %d\n", b->count);
+}
+
+void add_book(void)
+{
+    book *b = malloc(sizeof(book));
+
+    if (b == NULL)
+    {
+        printf("no memory\n");
+        return;
+    }
+
+    printf("\nbook id: ");
+    scanf("%d", &b->id);
+
+    if (find_book(b->id) != NULL)
+    {
+        printf("id exists\n");
+        free(b);
+        return;
+    }
+
+    printf("title: ");
+    scanf(" %99[^\n]", b->title);
+
+    printf("author: ");
+    scanf(" %99[^\n]", b->author);
+
+    printf("category: ");
+    scanf(" %49[^\n]", b->cat);
+
+    b->avail = 1;
+    b->count = 0;
+    b->next = NULL;
+
+    if (head == NULL)
+        head = b;
+    else
+        tail->next = b;
+
+    tail = b;
+
+    printf("book added\n");
+}
+
+void show_books(void)
+{
+    book *t = head;
 
     if (head == NULL)
     {
-        printf("\nNo books available.\n");
+        printf("\nno books\n");
         return;
     }
 
-    printf("\n========== BOOK LIST ==========\n");
+    printf("\n--- all books ---\n");
 
-    while (temp != NULL)
+    while (t != NULL)
     {
-        printf("\nBook ID      : %d", temp->bookId);
-        printf("\nTitle        : %s", temp->title);
-        printf("\nAuthor       : %s", temp->author);
-        printf("\nCategory     : %s", temp->category);
-        printf("\nAvailability : %s",
-               temp->available ? "Available" : "Issued");
-        printf("\nBorrow Count : %d\n", temp->borrowCount);
-        printf("-------------------------------\n");
-
-        temp = temp->next;
+        show_one(t);
+        t = t->next;
     }
 }
 
-/* Update book details */
-void updateBook()
+void edit_book(void)
 {
     int id;
-    Book *book;
+    book *b;
 
-    printf("\nEnter Book ID to update: ");
+    printf("\nbook id to edit: ");
     scanf("%d", &id);
 
-    book = getBookById(id);
+    b = find_book(id);
 
-    if (book == NULL)
+    if (b == NULL)
     {
-        printf("Book not found.\n");
+        printf("not found\n");
         return;
     }
 
-    getchar();
+    printf("new title: ");
+    scanf(" %99[^\n]", b->title);
 
-    printf("Enter new title: ");
-    fgets(book->title, sizeof(book->title), stdin);
-    book->title[strcspn(book->title, "\n")] = '\0';
+    printf("new author: ");
+    scanf(" %99[^\n]", b->author);
 
-    printf("Enter new author: ");
-    fgets(book->author, sizeof(book->author), stdin);
-    book->author[strcspn(book->author, "\n")] = '\0';
+    printf("new category: ");
+    scanf(" %49[^\n]", b->cat);
 
-    printf("Enter new category: ");
-    fgets(book->category, sizeof(book->category), stdin);
-    book->category[strcspn(book->category, "\n")] = '\0';
-
-    printf("Book updated successfully.\n");
+    printf("book updated\n");
 }
 
-/* Delete a book */
-void deleteBook()
+void del_book(void)
 {
     int id;
-    Book *temp = head;
-    Book *prev = NULL;
+    book *t = head;
+    book *prev = NULL;
 
-    printf("\nEnter Book ID to delete: ");
+    printf("\nbook id to delete: ");
     scanf("%d", &id);
 
-    while (temp != NULL && temp->bookId != id)
+    while (t != NULL && t->id != id)
     {
-        prev = temp;
-        temp = temp->next;
+        prev = t;
+        t = t->next;
     }
 
-    if (temp == NULL)
+    if (t == NULL)
     {
-        printf("Book not found.\n");
+        printf("not found\n");
         return;
     }
 
     if (prev == NULL)
-        head = temp->next;
+        head = t->next;
     else
-        prev->next = temp->next;
+        prev->next = t->next;
 
-    if (temp == tail)
+    if (t == tail)
         tail = prev;
 
-    free(temp);
+    free(t);
 
-    printf("Book deleted successfully.\n");
+    printf("book deleted\n");
 }
 
-/* Search book by ID */
-void searchById()
+void by_id(void)
 {
     int id;
-    Book *temp = head;
+    book *b;
 
-    printf("\nEnter Book ID: ");
+    printf("\nbook id: ");
     scanf("%d", &id);
 
-    while (temp != NULL)
-    {
-        if (temp->bookId == id)
-        {
-            printf("\nBook Found\n");
-            printf("ID       : %d\n", temp->bookId);
-            printf("Title    : %s\n", temp->title);
-            printf("Author   : %s\n", temp->author);
-            printf("Category : %s\n", temp->category);
-            printf("Status   : %s\n",
-                   temp->available ? "Available" : "Issued");
-            return;
-        }
+    b = find_book(id);
 
-        temp = temp->next;
-    }
-
-    printf("Book not found.\n");
+    if (b == NULL)
+        printf("not found\n");
+    else
+        show_one(b);
 }
 
-/* Search book by title */
-void searchByTitle()
+void find_text(int field)
 {
-    char title[100];
-    Book *temp = head;
-
-    getchar();
-
-    printf("\nEnter title: ");
-    fgets(title, sizeof(title), stdin);
-    title[strcspn(title, "\n")] = '\0';
-
-    while (temp != NULL)
-    {
-        if (strcmp(temp->title, title) == 0)
-        {
-            printf("\nBook Found\n");
-            printf("ID       : %d\n", temp->bookId);
-            printf("Title    : %s\n", temp->title);
-            printf("Author   : %s\n", temp->author);
-            printf("Category : %s\n", temp->category);
-            return;
-        }
-
-        temp = temp->next;
-    }
-
-    printf("Book not found.\n");
-}
-
-/* Search book by author */
-void searchByAuthor()
-{
-    char author[100];
-    Book *temp = head;
-
-    getchar();
-
-    printf("\nEnter author: ");
-    fgets(author, sizeof(author), stdin);
-    author[strcspn(author, "\n")] = '\0';
-
-    while (temp != NULL)
-    {
-        if (strcmp(temp->author, author) == 0)
-        {
-            printf("\nBook Found\n");
-            printf("ID       : %d\n", temp->bookId);
-            printf("Title    : %s\n", temp->title);
-            printf("Author   : %s\n", temp->author);
-            printf("Category : %s\n", temp->category);
-            return;
-        }
-
-        temp = temp->next;
-    }
-
-    printf("Book not found.\n");
-}
-
-/* Search books by category */
-void searchByCategory()
-{
-    char category[50];
-    Book *temp = head;
+    char x[100];
+    char *what;
+    book *t = head;
     int found = 0;
 
-    getchar();
+    printf("\nsearch text: ");
+    scanf(" %99[^\n]", x);
 
-    printf("\nEnter category: ");
-    fgets(category, sizeof(category), stdin);
-    category[strcspn(category, "\n")] = '\0';
-
-    while (temp != NULL)
+    while (t != NULL)
     {
-        if (strcmp(temp->category, category) == 0)
-        {
-            printf("\nID       : %d", temp->bookId);
-            printf("\nTitle    : %s", temp->title);
-            printf("\nAuthor   : %s\n", temp->author);
+        if (field == 1)
+            what = t->title;
+        else if (field == 2)
+            what = t->author;
+        else
+            what = t->cat;
 
+        if (strcmp(what, x) == 0)
+        {
+            show_one(t);
             found = 1;
         }
 
-        temp = temp->next;
+        t = t->next;
     }
 
     if (!found)
-        printf("No books found in this category.\n");
+        printf("not found\n");
 }
 
-/* Merge two sorted lists */
-Book *merge(Book *a, Book *b, int sortType)
+static book *merge(book *a, book *b, int type)
 {
-    Book *result;
+    int pick_a;
 
     if (a == NULL)
         return b;
@@ -315,200 +225,62 @@ Book *merge(Book *a, Book *b, int sortType)
     if (b == NULL)
         return a;
 
-    if (sortType == 1)
-    {
-        /* Sort by title */
-        if (strcmp(a->title, b->title) <= 0)
-        {
-            result = a;
-            result->next = merge(a->next, b, sortType);
-        }
-        else
-        {
-            result = b;
-            result->next = merge(a, b->next, sortType);
-        }
-    }
+    if (type == 1)
+        pick_a = strcmp(a->title, b->title) <= 0;
     else
+        pick_a = a->count >= b->count;
+
+    if (pick_a)
     {
-        /* Sort by popularity */
-        if (a->borrowCount >= b->borrowCount)
-        {
-            result = a;
-            result->next = merge(a->next, b, sortType);
-        }
-        else
-        {
-            result = b;
-            result->next = merge(a, b->next, sortType);
-        }
+        a->next = merge(a->next, b, type);
+        return a;
     }
 
-    return result;
+    b->next = merge(a, b->next, type);
+    return b;
 }
 
-/* Split linked list into two halves */
-void splitList(Book *source, Book **front, Book **back)
+static void split(book *src, book **front, book **back)
 {
-    Book *slow;
-    Book *fast;
+    book *slow = src;
+    book *fast = src->next;
 
-    if (source == NULL || source->next == NULL)
+    while (fast != NULL && fast->next != NULL)
     {
-        *front = source;
-        *back = NULL;
-        return;
+        slow = slow->next;
+        fast = fast->next->next;
     }
 
-    slow = source;
-    fast = source->next;
-
-    while (fast != NULL)
-    {
-        fast = fast->next;
-
-        if (fast != NULL)
-        {
-            slow = slow->next;
-            fast = fast->next;
-        }
-    }
-
-    *front = source;
+    *front = src;
     *back = slow->next;
-
     slow->next = NULL;
 }
 
-/* Merge Sort */
-void mergeSort(Book **list, int sortType)
+static void msort(book **list, int type)
 {
-    Book *current = *list;
-    Book *front;
-    Book *back;
+    book *front;
+    book *back;
 
-    if (current == NULL || current->next == NULL)
+    if (*list == NULL || (*list)->next == NULL)
         return;
 
-    splitList(current, &front, &back);
+    split(*list, &front, &back);
 
-    mergeSort(&front, sortType);
-    mergeSort(&back, sortType);
+    msort(&front, type);
+    msort(&back, type);
 
-    *list = merge(front, back, sortType);
+    *list = merge(front, back, type);
 }
 
-/* Sort books by title */
-void sortByTitle()
+void sort_books(int type)
 {
     if (head == NULL || head->next == NULL)
-    {
-        printf("Not enough books to sort.\n");
         return;
-    }
 
-    mergeSort(&head, 1);
+    msort(&head, type);
 
     tail = head;
 
     while (tail->next != NULL)
         tail = tail->next;
-
-    printf("Books sorted by title using Merge Sort.\n");
-}
-
-/* Sort books by popularity */
-void sortByPopularity()
-{
-    if (head == NULL || head->next == NULL)
-    {
-        printf("Not enough books to sort.\n");
-        return;
-    }
-
-    mergeSort(&head, 2);
-
-    tail = head;
-
-    while (tail->next != NULL)
-        tail = tail->next;
-
-    printf("Books sorted by popularity using Merge Sort.\n");
-}
-
-/* Main function */
-int main()
-{
-    int choice = -1;
-
-    while (choice != 0)
-    {
-        printf("\n===== BOOK MANAGEMENT =====\n");
-        printf("1. Add Book\n");
-        printf("2. Display Books\n");
-        printf("3. Update Book\n");
-        printf("4. Delete Book\n");
-        printf("5. Search by ID\n");
-        printf("6. Search by Title\n");
-        printf("7. Search by Author\n");
-        printf("8. Search by Category\n");
-        printf("9. Sort by Title\n");
-        printf("10. Sort by Popularity\n");
-        printf("0. Exit\n");
-
-        printf("\nEnter choice: ");
-        scanf("%d", &choice);
-
-        switch (choice)
-        {
-            case 1:
-                addBook();
-                break;
-
-            case 2:
-                displayBooks();
-                break;
-
-            case 3:
-                updateBook();
-                break;
-
-            case 4:
-                deleteBook();
-                break;
-
-            case 5:
-                searchById();
-                break;
-
-            case 6:
-                searchByTitle();
-                break;
-
-            case 7:
-                searchByAuthor();
-                break;
-
-            case 8:
-                searchByCategory();
-                break;
-
-            case 9:
-                sortByTitle();
-                break;
-
-            case 10:
-                sortByPopularity();
-                break;
-
-            case 0:
-                printf("Program ended.\n");
-                break;
-
-            default:
-                printf("Invalid choice.\n");
-        }
-    }
-
-    return 0;
 }
