@@ -133,7 +133,7 @@ void save_all(void)
 
 void load_all(void)
 {
-    /* only load into an empty library, otherwise ids would clash */
+    
     if (head != NULL || first_stu() != NULL)
         return;
 
