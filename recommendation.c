@@ -25,7 +25,7 @@ static int had_it(stu *s, int bid)
     return 0;
 }
 
-/* how many times the student took books from each category */
+
 static int taste(stu *s, char cats[][50], int hits[])
 {
     int n = 0;
@@ -107,8 +107,7 @@ void recommend(void)
     nc = taste(s, cats, hits);
     n = 0;
 
-    /* books already taken by this student are not suggested again.
-       score = 10 per earlier borrow in the same category + popularity */
+    
     for (b = head; b != NULL; b = b->next)
     {
         if (had_it(s, b->id))
