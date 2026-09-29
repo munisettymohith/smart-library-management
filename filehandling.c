@@ -8,8 +8,7 @@
 #define f_hist  "data/history.txt"
 #define f_logs  "data/logs.txt"
 
-/* every record is one line, fields split with '|' so titles and
-   names can keep their spaces */
+
 
 static void save_books(void)
 {
