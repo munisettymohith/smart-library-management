@@ -3,109 +3,101 @@
 #include <string.h>
 #include "library.h"
 
-static int get_book_count(void)
+/* binary search on book titles.
+   the books are kept in a linked list, and binary search needs random
+   access, so we copy the pointers into an array after sorting by title. */
+
+static int list_size(void)
 {
     int n = 0;
-    book *p = head;
+    book *t;
 
-    while (p != NULL)
-    {
+    for (t = head; t != NULL; t = t->next)
         n++;
-        p = p->next;
-    }
 
     return n;
 }
 
-static void print_result(book *p)
+static void print_book(book *b)
 {
-    printf("\nID       : %d", p->id);
-    printf("\nTitle    : %s", p->title);
-    printf("\nAuthor   : %s", p->author);
-    printf("\nCategory : %s", p->cat);
-    printf("\nStatus   : %s", p->avail ? "Available" : "Issued");
-    printf("\nBorrows  : %d\n", p->count);
+    printf("\nid     : %d", b->id);
+    printf("\ntitle  : %s", b->title);
+    printf("\nauthor : %s", b->author);
+    printf("\ncat    : %s", b->cat);
+    printf("\nstatus : %s", b->avail ? "in" : "out");
+    printf("\ncount  : %d\n", b->count);
+}
+
+/* returns the index of the first title equal to x, or -1 */
+static int first_match(book **arr, int n, const char *x)
+{
+    int low = 0;
+    int high = n - 1;
+    int found = -1;
+
+    while (low <= high)
+    {
+        int mid = low + (high - low) / 2;
+        int c = strcmp(arr[mid]->title, x);
+
+        if (c == 0)
+        {
+            found = mid;
+            high = mid - 1;     /* keep going left for the first one */
+        }
+        else if (c < 0)
+            low = mid + 1;
+        else
+            high = mid - 1;
+    }
+
+    return found;
 }
 
 void bin_title(void)
 {
-    int n, left, right, mid, found = -1;
-    int i;
-    char title[100];
-    book *p;
-    book **list;
-
-    n = get_book_count();
+    int n = list_size();
+    int i = 0;
+    int pos;
+    char x[100];
+    book *t;
+    book **arr;
 
     if (n == 0)
     {
-        printf("No books available.\n");
+        printf("\nno books\n");
         return;
     }
 
-    list = malloc(n * sizeof(book *));
+    arr = malloc(n * sizeof(book *));
 
-    if (list == NULL)
+    if (arr == NULL)
     {
-        printf("Memory allocation failed.\n");
+        printf("no memory\n");
         return;
     }
 
-    printf("Enter title: ");
-    scanf(" %99[^\n]", title);
+    printf("\ntitle to search: ");
+    scanf(" %99[^\n]", x);
 
-    /* Binary search needs the titles in sorted order. */
-    sort_books(1);
+    sort_books(1);      /* binary search only works on sorted data */
 
-    p = head;
-    i = 0;
+    for (t = head; t != NULL; t = t->next)
+        arr[i++] = t;
 
-    while (p != NULL)
-    {
-        list[i] = p;
-        i++;
-        p = p->next;
-    }
+    pos = first_match(arr, n, x);
 
-    left = 0;
-    right = n - 1;
-
-    while (left <= right)
-    {
-        int result;
-
-        mid = (left + right) / 2;
-        result = strcmp(list[mid]->title, title);
-
-        if (result == 0)
-        {
-            found = mid;
-            break;
-        }
-        else if (result < 0)
-            left = mid + 1;
-        else
-            right = mid - 1;
-    }
-
-    if (found == -1)
-    {
-        printf("Book not found.\n");
-    }
+    if (pos == -1)
+        printf("not found\n");
     else
     {
-        int first = found;
-        int last = found;
-
-        while (first > 0 && strcmp(list[first - 1]->title, title) == 0)
-            first--;
-
-        while (last < n - 1 && strcmp(list[last + 1]->title, title) == 0)
-            last++;
-
-        for (i = first; i <= last; i++)
-            print_result(list[i]);
+        /* titles can repeat, so show every book with this title */
+        while (pos < n && strcmp(arr[pos]->title, x) == 0)
+        {
+            print_book(arr[pos]);
+            pos++;
+        }
     }
 
-    free(list);
+    free(arr);
 }
