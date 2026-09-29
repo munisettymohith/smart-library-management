@@ -26,7 +26,7 @@ static void print_book(book *b)
     printf("\ncount  : %d\n", b->count);
 }
 
-/* returns the index of the first title equal to x, or -1 */
+
 static int first_match(book **arr, int n, const char *x)
 {
     int low = 0;
@@ -41,7 +41,7 @@ static int first_match(book **arr, int n, const char *x)
         if (c == 0)
         {
             found = mid;
-            high = mid - 1;     /* keep going left for the first one */
+            high = mid - 1;   
         }
         else if (c < 0)
             low = mid + 1;
