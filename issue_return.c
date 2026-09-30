@@ -25,15 +25,20 @@ static trans logs[maxlog];
 static int nlog = 0;
 
 static wait *rear = NULL;
-
-static int ask(char *msg)
+static int ask(const char *msg, int *out)
 {
-    int x;
+    int c;
 
     printf("%s", msg);
-    scanf("%d", &x);
 
-    return x;
+    if (scanf("%d", out) == 1)
+        return 1;
+
+    while ((c = getchar()) != '\n' && c != EOF)
+        ;
+
+    printf("please enter a number\n");
+    return 0;
 }
 
 static void wait_add(int sid, int bid)
@@ -103,7 +108,8 @@ void issue_book(void)
     int sid, bid, day;
     book *b;
 
-    sid = ask("\nstudent id: ");
+    if (!ask("\nstudent id: ", &sid))
+        return;
 
     if (find_stu(sid) == NULL)
     {
@@ -111,7 +117,8 @@ void issue_book(void)
         return;
     }
 
-    bid = ask("book id: ");
+    if (!ask("book id: ", &bid))
+        return;
 
     b = find_book(bid);
 
@@ -134,7 +141,8 @@ void issue_book(void)
         return;
     }
 
-    day = ask("issue day: ");
+    if (!ask("issue day: ", &day))
+        return;
 
     logs[nlog].sid = sid;
     logs[nlog].bid = bid;
@@ -157,8 +165,11 @@ void return_book(void)
     int i;
     book *b;
 
-    sid = ask("\nstudent id: ");
-    bid = ask("book id: ");
+    if (!ask("\nstudent id: ", &sid))
+        return;
+
+    if (!ask("book id: ", &bid))
+        return;
 
     for (i = 0; i < nlog && at == -1; i++)
     {
@@ -172,7 +183,8 @@ void return_book(void)
         return;
     }
 
-    day = ask("return day: ");
+    if (!ask("return day: ", &day))
+        return;
 
     logs[at].rday = day;
     logs[at].done = 1;
