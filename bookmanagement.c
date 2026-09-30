@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "library.h"
 
 book *head = NULL;
@@ -183,6 +184,23 @@ void by_id(void)
         show_one(b);
 }
 
+static int has_text(const char *hay, const char *needle)
+{
+    int i, j;
+
+    for (i = 0; hay[i] != '\0'; i++)
+    {
+        for (j = 0; needle[j] != '\0' && hay[i + j] != '\0' &&
+                    tolower((unsigned char)hay[i + j]) == tolower((unsigned char)needle[j]); j++)
+            ;
+
+        if (needle[j] == '\0')
+            return 1;
+    }
+
+    return 0;
+}
+
 void find_text(int field)
 {
     char x[100];
@@ -190,8 +208,15 @@ void find_text(int field)
     book *t = head;
     int found = 0;
 
+    x[0] = '\0';
+
     printf("\nsearch text: ");
-    scanf(" %99[^\n]", x);
+
+    if (scanf(" %99[^\n]", x) != 1)
+    {
+        printf("nothing entered\n");
+        return;
+    }
 
     while (t != NULL)
     {
@@ -202,7 +227,7 @@ void find_text(int field)
         else
             what = t->cat;
 
-        if (strcmp(what, x) == 0)
+        if (has_text(what, x))
         {
             show_one(t);
             found = 1;
