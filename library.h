@@ -57,6 +57,7 @@ void return_book(void);
 void show_queue(void);
 void logs_save(const char *path);
 void logs_load(const char *path);
+float fine_of(int sid);
 
 float calc_fine(int days);
 void show_pop(void);
