@@ -90,6 +90,7 @@ int main(void)
         printf("10. sort by borrows 20. test fine\n");
         printf("21. student books   22. recommend\n");
         printf("23. binary search   24. save data\n");
+        printf("25. sort by author  26. sort by category\n");
         printf("0. exit\n");
 
         printf("\nchoice: ");
@@ -123,6 +124,8 @@ int main(void)
             case 22: recommend(); break;
             case 23: bin_title(); break;
             case 24: save_all(); break;
+            case 25: sort_books(3); printf("sorted by author\n"); break;
+            case 26: sort_books(4); printf("sorted by category\n"); break;
             case 0: save_all(); printf("bye\n"); break;
             default: printf("wrong choice\n");
         }

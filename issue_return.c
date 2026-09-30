@@ -2,16 +2,17 @@
 #include <stdlib.h>
 #include "library.h"
 
-#define maxlog 100
 #define loan 14
+#define f_queue "data/queue.txt"
 
-typedef struct
+typedef struct trans
 {
     int sid;
     int bid;
     int iday;
     int rday;
     int done;
+    struct trans *next;
 } trans;
 
 typedef struct wait
@@ -21,10 +22,11 @@ typedef struct wait
     struct wait *next;
 } wait;
 
-static trans logs[maxlog];
-static int nlog = 0;
+static trans *lhead = NULL;
+static trans *ltail = NULL;
 
 static wait *rear = NULL;
+
 static int ask(const char *msg, int *out)
 {
     int c;
@@ -41,15 +43,50 @@ static int ask(const char *msg, int *out)
     return 0;
 }
 
-static void wait_add(int sid, int bid)
+static trans *log_add(int sid, int bid, int iday, int rday, int done)
+{
+    trans *n = malloc(sizeof(trans));
+
+    if (n == NULL)
+        return NULL;
+
+    n->sid = sid;
+    n->bid = bid;
+    n->iday = iday;
+    n->rday = rday;
+    n->done = done;
+    n->next = NULL;
+
+    if (lhead == NULL)
+        lhead = n;
+    else
+        ltail->next = n;
+
+    ltail = n;
+
+    return n;
+}
+
+static void log_free(void)
+{
+    trans *nx;
+
+    while (lhead != NULL)
+    {
+        nx = lhead->next;
+        free(lhead);
+        lhead = nx;
+    }
+
+    ltail = NULL;
+}
+
+static int wait_push(int sid, int bid)
 {
     wait *n = malloc(sizeof(wait));
 
     if (n == NULL)
-    {
-        printf("no memory\n");
-        return;
-    }
+        return 0;
 
     n->sid = sid;
     n->bid = bid;
@@ -64,16 +101,42 @@ static void wait_add(int sid, int bid)
 
     rear = n;
 
-    printf("added to queue\n");
+    return 1;
 }
 
-static void wait_go(int bid)
+static void wait_add(int sid, int bid)
+{
+    if (wait_push(sid, bid))
+        printf("added to queue\n");
+    else
+        printf("no memory\n");
+}
+
+static void wait_free(void)
+{
+    wait *t;
+
+    while (rear != NULL)
+    {
+        t = rear->next;
+
+        if (t == rear)
+            rear = NULL;
+        else
+            rear->next = t->next;
+
+        free(t);
+    }
+}
+
+static int wait_go(int bid)
 {
     wait *prev;
     wait *cur;
+    int sid;
 
     if (rear == NULL)
-        return;
+        return -1;
 
     prev = rear;
     cur = rear->next;
@@ -82,7 +145,7 @@ static void wait_go(int bid)
     {
         if (cur->bid == bid)
         {
-            printf("tell student %d: book %d is free\n", cur->sid, bid);
+            sid = cur->sid;
 
             if (cur == prev)
                 rear = NULL;
@@ -95,12 +158,14 @@ static void wait_go(int bid)
             }
 
             free(cur);
-            return;
+            return sid;
         }
 
         prev = cur;
         cur = cur->next;
     } while (prev != rear);
+
+    return -1;
 }
 
 void issue_book(void)
@@ -135,21 +200,14 @@ void issue_book(void)
         return;
     }
 
-    if (nlog >= maxlog)
-    {
-        printf("log full\n");
-        return;
-    }
-
     if (!ask("issue day: ", &day))
         return;
 
-    logs[nlog].sid = sid;
-    logs[nlog].bid = bid;
-    logs[nlog].iday = day;
-    logs[nlog].rday = -1;
-    logs[nlog].done = 0;
-    nlog++;
+    if (log_add(sid, bid, day, -1, 0) == NULL)
+    {
+        printf("no memory\n");
+        return;
+    }
 
     b->avail = 0;
     b->count++;
@@ -160,9 +218,9 @@ void issue_book(void)
 
 void return_book(void)
 {
-    int sid, bid, day, late;
-    int at = -1;
-    int i;
+    int sid, bid, day, late, next;
+    trans *at = NULL;
+    trans *t;
     book *b;
 
     if (!ask("\nstudent id: ", &sid))
@@ -171,13 +229,13 @@ void return_book(void)
     if (!ask("book id: ", &bid))
         return;
 
-    for (i = 0; i < nlog && at == -1; i++)
+    for (t = lhead; t != NULL && at == NULL; t = t->next)
     {
-        if (logs[i].sid == sid && logs[i].bid == bid && !logs[i].done)
-            at = i;
+        if (t->sid == sid && t->bid == bid && !t->done)
+            at = t;
     }
 
-    if (at == -1)
+    if (at == NULL)
     {
         printf("no such issue\n");
         return;
@@ -186,8 +244,8 @@ void return_book(void)
     if (!ask("return day: ", &day))
         return;
 
-    logs[at].rday = day;
-    logs[at].done = 1;
+    at->rday = day;
+    at->done = 1;
 
     b = find_book(bid);
 
@@ -198,12 +256,55 @@ void return_book(void)
 
     printf("book returned\n");
 
-    late = day - logs[at].iday - loan;
+    late = day - at->iday - loan;
 
     if (late > 0)
         printf("late by %d days, fine rs %.2f\n", late, calc_fine(late));
 
-    wait_go(bid);
+    if (b == NULL)
+        return;
+
+    while ((next = wait_go(bid)) != -1)
+    {
+        if (find_stu(next) == NULL)
+        {
+            printf("student %d no longer exists, skipped\n", next);
+            continue;
+        }
+
+        if (log_add(next, bid, day, -1, 0) == NULL)
+        {
+            printf("no memory\n");
+            return;
+        }
+
+        b->avail = 0;
+        b->count++;
+        hist_add(next, bid);
+
+        printf("book issued to waiting student %d, due in %d days\n", next, loan);
+        break;
+    }
+}
+
+float fine_of(int sid)
+{
+    trans *t;
+    float sum = 0;
+    int late;
+
+    for (t = lhead; t != NULL; t = t->next)
+    {
+        if (t->sid == sid && t->done)
+        {
+            late = t->rday - t->iday - loan;
+
+            if (late > 0)
+                sum += calc_fine(late);
+        }
+    }
+
+    return sum;
 }
 
 void show_queue(void)
@@ -229,10 +330,58 @@ void show_queue(void)
     } while (t != rear->next);
 }
 
+static void queue_save(void)
+{
+    FILE *f = fopen(f_queue, "w");
+    wait *t;
+
+    if (f == NULL)
+    {
+        printf("cannot write %s\n", f_queue);
+        return;
+    }
+
+    if (rear != NULL)
+    {
+        t = rear->next;
+
+        do
+        {
+            fprintf(f, "%d|%d\n", t->sid, t->bid);
+            t = t->next;
+        } while (t != rear->next);
+    }
+
+    fclose(f);
+}
+
+static void queue_load(void)
+{
+    FILE *f = fopen(f_queue, "r");
+    int sid, bid;
+
+    if (f == NULL)
+        return;
+
+    wait_free();
+
+    while (fscanf(f, " %d|%d", &sid, &bid) == 2)
+    {
+        if (!wait_push(sid, bid))
+            break;
+    }
+
+    fclose(f);
+}
+
 void logs_save(const char *path)
 {
-    FILE *f = fopen(path, "w");
-    int i;
+    FILE *f;
+    trans *t;
+
+    queue_save();
+
+    f = fopen(path, "w");
 
     if (f == NULL)
     {
@@ -240,25 +389,31 @@ void logs_save(const char *path)
         return;
     }
 
-    for (i = 0; i < nlog; i++)
-        fprintf(f, "%d|%d|%d|%d|%d\n", logs[i].sid, logs[i].bid, logs[i].iday, logs[i].rday, logs[i].done);
+    for (t = lhead; t != NULL; t = t->next)
+        fprintf(f, "%d|%d|%d|%d|%d\n", t->sid, t->bid, t->iday, t->rday, t->done);
 
     fclose(f);
 }
 
 void logs_load(const char *path)
 {
-    FILE *f = fopen(path, "r");
+    FILE *f;
+    int sid, bid, iday, rday, done;
+
+    queue_load();
+
+    f = fopen(path, "r");
 
     if (f == NULL)
         return;
 
-    nlog = 0;
+    log_free();
 
-    while (nlog < maxlog &&
-           fscanf(f, " %d|%d|%d|%d|%d", &logs[nlog].sid, &logs[nlog].bid,
-                  &logs[nlog].iday, &logs[nlog].rday, &logs[nlog].done) == 5)
-        nlog++;
+    while (fscanf(f, " %d|%d|%d|%d|%d", &sid, &bid, &iday, &rday, &done) == 5)
+    {
+        if (log_add(sid, bid, iday, rday, done) == NULL)
+            break;
+    }
 
     fclose(f);
 }

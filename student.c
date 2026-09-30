@@ -23,6 +23,22 @@ static void read_text(char *dest, int size)
     dest[i] = '\0';
 }
 
+static int ask_num(const char *msg, int *out)
+{
+    int c;
+
+    printf("%s", msg);
+
+    if (scanf("%d", out) == 1)
+        return 1;
+
+    while ((c = getchar()) != '\n' && c != EOF)
+        ;
+
+    printf("please enter a number\n");
+    return 0;
+}
+
 static void free_hist(hnode *h)
 {
     hnode *nx;
@@ -50,8 +66,8 @@ void add_stu(void)
     stu *n;
     int id;
 
-    printf("\nstudent id: ");
-    scanf("%d", &id);
+    if (!ask_num("\nstudent id: ", &id))
+        return;
 
     if (find_stu(id) != NULL)
     {
@@ -96,7 +112,8 @@ void show_stu(void)
     {
         printf("\nid    : %d", t->id);
         printf("\nname  : %s", t->name);
-        printf("\nbooks : %d\n", t->count);
+        printf("\nbooks : %d", t->count);
+        printf("\nfines : rs %.2f\n", fine_of(t->id));
     }
 }
 
@@ -105,8 +122,8 @@ void edit_stu(void)
     int id;
     stu *s;
 
-    printf("\nstudent id to edit: ");
-    scanf("%d", &id);
+    if (!ask_num("\nstudent id to edit: ", &id))
+        return;
 
     s = find_stu(id);
 
@@ -128,8 +145,8 @@ void del_stu(void)
     stu **pp = &shead;
     stu *gone;
 
-    printf("\nstudent id to delete: ");
-    scanf("%d", &id);
+    if (!ask_num("\nstudent id to delete: ", &id))
+        return;
 
     while (*pp != NULL && (*pp)->id != id)
         pp = &(*pp)->next;
@@ -195,8 +212,8 @@ void show_mine(void)
     hnode *h;
     book *b;
 
-    printf("\nstudent id: ");
-    scanf("%d", &id);
+    if (!ask_num("\nstudent id: ", &id))
+        return;
 
     s = find_stu(id);
 
@@ -213,6 +230,7 @@ void show_mine(void)
     }
 
     printf("\n--- books of %s ---\n", s->name);
+    printf("total fines: rs %.2f\n", fine_of(s->id));
 
     for (h = s->hist; h != NULL; h = h->next)
     {

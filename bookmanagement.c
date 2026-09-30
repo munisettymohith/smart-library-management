@@ -227,6 +227,10 @@ static book *merge(book *a, book *b, int type)
 
     if (type == 1)
         pick_a = strcmp(a->title, b->title) <= 0;
+    else if (type == 3)
+        pick_a = strcmp(a->author, b->author) <= 0;
+    else if (type == 4)
+        pick_a = strcmp(a->cat, b->cat) <= 0;
     else
         pick_a = a->count >= b->count;
 
