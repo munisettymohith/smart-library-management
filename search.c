@@ -3,9 +3,7 @@
 #include <string.h>
 #include "library.h"
 
-/* binary search on book titles.
-   the books are kept in a linked list, and binary search needs random
-   access, so we copy the pointers into an array after sorting by title. */
+
 
 static int list_size(void)
 {
@@ -28,7 +26,7 @@ static void print_book(book *b)
     printf("\ncount  : %d\n", b->count);
 }
 
-/* returns the index of the first title equal to x, or -1 */
+
 static int first_match(book **arr, int n, const char *x)
 {
     int low = 0;
@@ -43,7 +41,7 @@ static int first_match(book **arr, int n, const char *x)
         if (c == 0)
         {
             found = mid;
-            high = mid - 1;     /* keep going left for the first one */
+            high = mid - 1;     
         }
         else if (c < 0)
             low = mid + 1;
@@ -80,7 +78,7 @@ void bin_title(void)
     printf("\ntitle to search: ");
     scanf(" %99[^\n]", x);
 
-    sort_books(1);      /* binary search only works on sorted data */
+    sort_books(1);      
 
     for (t = head; t != NULL; t = t->next)
         arr[i++] = t;
@@ -91,7 +89,7 @@ void bin_title(void)
         printf("not found\n");
     else
     {
-        /* titles can repeat, so show every book with this title */
+        
         while (pos < n && strcmp(arr[pos]->title, x) == 0)
         {
             print_book(arr[pos]);
